@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HCC Scorecard</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f4f6f8;
+      color: #111;
+    }
+
+    header {
+      background: #111827;
+      color: white;
+      padding: 25px 15px;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 30px;
+    }
+
+    header p {
+      margin-top: 6px;
+      color: #cbd5e1;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .section {
+      background: white;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+    }
+
+    .section h2 {
+      margin-bottom: 15px;
+    }
+
+    .players {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .player {
+      background: #eef2ff;
+      border-radius: 12px;
+      padding: 18px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .player:hover {
+      background: #e0e7ff;
+    }
+
+    .ranking {
+      display: flex;
+      justify-content: space-between;
+      padding: 14px;
+      margin: 8px 0;
+      background: #f8fafc;
+      border-radius: 10px;
+    }
+
+    .number {
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      padding: 25px;
+      color: #64748b;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>🏏 HCC Scorecard</h1>
+    <p>Cricket Statistics & Rankings</p>
+  </header>
+
+  <div class="container">
+
+    <div class="section">
+      <h2>👥 Players</h2>
+
+      <div class="players">
+        <div class="player">Player 1</div>
+        <div class="player">Player 2</div>
+        <div class="player">Player 3</div>
+        <div class="player">Player 4</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🏆 Best Batsmen</h2>
+
+      <div class="ranking">
+        <span>🥇 Player 1</span>
+        <span class="number">R/A/SR</span>
+      </div>
+
+      <div class="ranking">
+        <span>🥈 Player 2</span>
+        <span class="number">R/A/SR</span>
+      </div>
+
+      <div class="ranking">
+        <span>🥉 Player 3</span>
+        <span class="number">R/A/SR</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>💪 Best All-Rounders</h2>
+
+      <div class="ranking">
+        <span>🥇 Player 1</span>
+        <span class="number">All-Round Score</span>
+      </div>
+
+      <div class="ranking">
+        <span>🥈 Player 2</span>
+        <span class="number">All-Round Score</span>
+      </div>
+
+      <div class="ranking">
+        <span>🥉 Player 3</span>
+        <span class="number">All-Round Score</span>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    HCC Scorecard 🏏
+  </footer>
+
+</body>
+  </html>
