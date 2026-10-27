@@ -1,215 +1,192 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HCC Scorecard</title>
+<script>
+let adminLoggedIn = false;
 
-<style>
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
-}
-
-body {
-  background: #f4f6f8;
-  color: #111827;
-}
-
-header {
-  background: #111827;
-  color: white;
-  padding: 25px 15px;
-  text-align: center;
-}
-
-header h1 {
-  font-size: 30px;
-}
-
-header p {
-  margin-top: 6px;
-  color: #cbd5e1;
-}
-
-.container {
-  max-width: 900px;
-  margin: auto;
-  padding: 20px;
-}
-
-.section {
-  background: white;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 3px 12px rgba(0,0,0,0.08);
-}
-
-.section h2 {
-  margin-bottom: 15px;
-}
-
-.players {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-}
-
-.player {
-  background: #eef2ff;
-  border-radius: 12px;
-  padding: 18px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.ranking {
-  display: flex;
-  justify-content: space-between;
-  padding: 14px;
-  margin: 8px 0;
-  background: #f8fafc;
-  border-radius: 10px;
-}
-
-.admin-button {
-  display: block;
-  width: 100%;
-  padding: 15px;
-  border: none;
-  border-radius: 10px;
-  background: #111827;
-  color: white;
-  font-size: 17px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-footer {
-  text-align: center;
-  padding: 25px;
-  color: #64748b;
-}
-</style>
-</head>
-
-<body>
-
-<header>
-  <h1>🏏 HCC Scorecard</h1>
-  <p>Cricket Statistics & Rankings</p>
-</header>
-
-<div class="container">
-
-  <div class="section">
-    <h2>👥 Players</h2>
-
-    <div class="players">
-      <div class="player">Manas Raj</div>
-      <div class="player">Yash Raj</div>
-      <div class="player">Ishani Raj</div>
-      <div class="player">Altamash</div>
-      <div class="player">Samar</div>
-      <div class="player">Shivam</div>
-      <div class="player">Himanshu</div>
-      <div class="player">Devraj</div>
-      <div class="player">Abhishek</div>
-      <div class="player">Kanishk</div>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>🏆 Best Batsmen</h2>
-
-    <div class="ranking">
-      <span>🥇 Manas Raj</span>
-      <span>R/A/SR</span>
-    </div>
-
-    <div class="ranking">
-      <span>🥈 Yash Raj</span>
-      <span>R/A/SR</span>
-    </div>
-
-    <div class="ranking">
-      <span>🥉 Ishani Raj</span>
-      <span>R/A/SR</span>
-    </div>
-  </div>
-
-  <div class="section">
-  <h2>🎯 Best Bowlers</h2>
-
-  <div class="ranking">
-    <span>🥇 Manas Raj</span>
-    <span>W/E/A</span>
-  </div>
-
-  <div class="ranking">
-    <span>🥈 Yash Raj</span>
-    <span>W/E/A</span>
-  </div>
-
-  <div class="ranking">
-    <span>🥉 Ishani Raj</span>
-    <span>W/E/A</span>
-  </div>
-      </div>
-  <div class="section">
-    <h2>💪 Best All-Rounders</h2>
-
-    <div class="ranking">
-      <span>🥇 Manas Raj</span>
-      <span>Score</span>
-    </div>
-
-    <div class="ranking">
-      <span>🥈 Yash Raj</span>
-      <span>Score</span>
-    </div>
-
-    <div class="ranking">
-      <span>🥉 Ishani Raj</span>
-      <span>Score</span>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>🔐 Admin</h2>
-    <button class="admin-button" onclick="openAdmin()">Open Admin Panel</button>
-  </div>
-
-</div>
-
-<footer>
-  HCC Scorecard 🏏
-</footer>
-
-  <script>
-function openAdmin() {
+async function openAdmin() {
   const password = prompt("Enter Admin Password:");
   if (password === null) return;
 
-  fetch("/api/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      alert("Admin login successful!");
-    } else {
-      alert("Incorrect password!");
+  try {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      alert("Login failed. Check your password.");
+      return;
     }
-  })
-  .catch(() => alert("Login failed. Please try again."));
+
+    adminLoggedIn = true;
+    showAdminEditor();
+  } catch {
+    alert("Login failed. Please try again.");
+  }
+}
+
+async function showAdminEditor() {
+  let players;
+
+  try {
+    const response = await fetch("/api/players", {
+      credentials: "same-origin",
+      cache: "no-store"
+    });
+
+    if (!response.ok) throw new Error();
+
+    players = await response.json();
+  } catch {
+    alert("Could not load players.");
+    return;
+  }
+
+  const old = document.getElementById("admin-editor");
+  if (old) old.remove();
+
+  const panel = document.createElement("div");
+  panel.id = "admin-editor";
+  panel.style.cssText =
+    "position:fixed;inset:0;background:#f4f6f8;z-index:9999;" +
+    "overflow:auto;padding:20px;font-family:Arial,sans-serif";
+
+  panel.innerHTML = `
+    <div style="max-width:500px;margin:auto;background:white;padding:20px;border-radius:14px">
+      <h2>🏏 Admin Panel</h2>
+      <p style="margin:12px 0">Select a player and update their statistics.</p>
+
+      <label for="admin-player">Player</label>
+      <select id="admin-player" style="width:100%;padding:12px;margin:8px 0 16px"></select>
+
+      <div id="admin-fields"></div>
+
+      <button id="save-stats" style="width:100%;padding:14px;background:#111827;color:white;border:0;border-radius:8px;margin-top:15px">
+        Save Statistics
+      </button>
+
+      <button id="close-admin" style="width:100%;padding:14px;margin-top:10px">
+        Close Admin Panel
+      </button>
+
+      <p id="admin-message" role="status" style="margin-top:12px"></p>
+    </div>
+  `;
+
+  document.body.appendChild(panel);
+
+  const select = panel.querySelector("#admin-player");
+  const fields = panel.querySelector("#admin-fields");
+
+  for (const player of players) {
+    const option = document.createElement("option");
+    option.value = player.id;
+    option.textContent = player.name;
+    select.appendChild(option);
+  }
+
+  const stats = [
+    ["runs", "Runs"],
+    ["batting_average", "Batting Average"],
+    ["strike_rate", "Strike Rate"],
+    ["wickets", "Wickets"],
+    ["economy", "Economy"],
+    ["bowling_average", "Bowling Average"]
+  ];
+
+  function renderFields() {
+    const player = players.find(p => p.id === Number(select.value));
+
+    fields.replaceChildren();
+
+    for (const [key, label] of stats) {
+      const wrapper = document.createElement("div");
+      wrapper.style.marginBottom = "12px";
+
+      const caption = document.createElement("label");
+      caption.textContent = label;
+      caption.htmlFor = "stat-" + key;
+
+      const input = document.createElement("input");
+      input.id = "stat-" + key;
+      input.type = "number";
+      input.min = "0";
+      input.step = ["runs", "wickets"].includes(key) ? "1" : "any";
+      input.value = player[key] ?? 0;
+      input.style.cssText = "width:100%;padding:11px;margin-top:5px";
+
+      wrapper.append(caption, input);
+      fields.appendChild(wrapper);
     }
+  }
+
+  select.addEventListener("change", renderFields);
+  renderFields();
+
+  panel.querySelector("#save-stats").addEventListener("click", async () => {
+    if (!adminLoggedIn) return;
+
+    const button = panel.querySelector("#save-stats");
+    const message = panel.querySelector("#admin-message");
+    button.disabled = true;
+    message.textContent = "Saving...";
+
+    const payload = { id: Number(select.value) };
+
+    for (const [key] of stats) {
+      const input = panel.querySelector("#stat-" + key);
+      const value = input.valueAsNumber;
+
+      if (
+        input.value.trim() === "" ||
+        !Number.isFinite(value) ||
+        value < 0 ||
+        (["runs", "wickets"].includes(key) && !Number.isInteger(value))
+      ) {
+        message.textContent = "Please enter valid statistics.";
+        button.disabled = false;
+        return;
+      }
+
+      payload[key] = value;
+    }
+
+    try {
+      const response = await fetch("/api/players", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        message.textContent = result.error || "Could not save statistics.";
+        return;
+      }
+
+      message.textContent = "Statistics saved successfully!";
+      await showAdminEditor();
+    } catch {
+      message.textContent = "Network error. Please try again.";
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  panel.querySelector("#close-admin").addEventListener("click", async () => {
+    try {
+      await fetch("/api/logout", {
+        method: "POST",
+        credentials: "same-origin"
+      });
+    } finally {
+      adminLoggedIn = false;
+      panel.remove();
+    }
+  });
+}
   </script>
-</body>
-  </html>
