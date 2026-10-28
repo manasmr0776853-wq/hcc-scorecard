@@ -392,9 +392,60 @@ async function showAdminEditor(){
       <label for="admin-player">Player</label>
       <select id="admin-player"></select>
 
-      <div id="admin-fields"></div>
+            <div id="admin-fields"></div>
 
       <button class="primary" id="save-stats">Save Statistics</button>
+
+      <hr style="margin:22px 0">
+
+      <h3>🏆 Manage Records</h3>
+
+      <label for="record-type">Record Type</label>
+      <select id="record-type">
+        <option value="highest_individual_score">Highest Individual Score</option>
+        <option value="highest_team_total">Highest Team Total</option>
+        <option value="hat_tricks">Hat-tricks</option>
+        <option value="biggest_chase">Biggest Successful Chase</option>
+        <option value="best_defense">Best Defense of a Target</option>
+        <option value="most_centuries">Most Centuries</option>
+        <option value="most_half_centuries">Most Half-Centuries</option>
+        <option value="most_wickets_in_match">Most Wickets in One Match</option>
+      </select>
+
+      <label for="record-value">Record Value</label>
+      <input id="record-value" type="text" placeholder="Enter record details">
+
+      <label for="record-player">Player Name (optional)</label>
+      <input id="record-player" type="text" placeholder="Player name">
+
+      <label for="record-team">Team Name (optional)</label>
+      <input id="record-team" type="text" placeholder="Team name">
+
+      <button class="primary" id="save-record">Save Record</button>
+
+      <hr style="margin:22px 0">
+
+      <h3>👥 Manage Teams</h3>
+
+      <label for="team-name">Team</label>
+      <select id="team-name">
+        <option>Team M</option>
+        <option>Team A</option>
+        <option>Team Y</option>
+        <option>Team I</option>
+      </select>
+
+      <label for="matches-won">Matches Won</label>
+      <input id="matches-won" type="number" min="0" step="1" value="0">
+
+      <label for="series-won">Series Won</label>
+      <input id="series-won" type="number" min="0" step="1" value="0">
+
+      <label for="finals-won">Finals Won</label>
+      <input id="finals-won" type="number" min="0" step="1" value="0">
+
+      <button class="primary" id="save-team">Save Team Statistics</button>
+
       <button class="secondary" id="close-admin">Close Admin Panel</button>
       <p id="admin-message" class="message" role="status"></p>
     </div>`;
