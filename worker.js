@@ -62,7 +62,7 @@ async function isAdmin(request, secret) {
   }
 }
 
-const STAT_FIELDS = {
+const NUMERIC_FIELDS = {
   matches: "INTEGER",
   innings: "INTEGER",
   runs: "INTEGER",
@@ -77,20 +77,19 @@ const STAT_FIELDS = {
   bowling_average: "REAL"
 };
 
-const TEXT_FIELDS = {
-  best_batting: true,
-  best_bowling: true
-};
+const TEXT_FIELDS = ["best_batting", "best_bowling"];
+const FORMATS = ["Test", "ODI", "T20"];
+
+function getFormat(value) {
+  return FORMATS.includes(value) ? value : null;
+}
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     // ADMIN LOGIN
-    if (
-      url.pathname === "/api/login" &&
-      request.method === "POST"
-    ) {
+    if (url.pathname === "/api/login" && request.method === "POST") {
       try {
         const body = await request.json();
 
@@ -113,11 +112,7 @@ export default {
           )
         );
 
-        const signature = await sign(
-          payload,
-          env.ADMIN_PASSWORD
-        );
-
+        const signature = await sign(payload, env.ADMIN_PASSWORD);
         const token = `${payload}.${signature}`;
 
         return Response.json(
@@ -139,10 +134,7 @@ export default {
     }
 
     // ADMIN LOGOUT
-    if (
-      url.pathname === "/api/logout" &&
-      request.method === "POST"
-    ) {
+    if (url.pathname === "/api/logout" && request.method === "POST") {
       return Response.json(
         { success: true },
         {
@@ -155,15 +147,46 @@ export default {
       );
     }
 
-    // LOAD ALL PLAYERS
-    if (
-      url.pathname === "/api/players" &&
-      request.method === "GET"
-    ) {
+    // LOAD PLAYERS FOR A SELECTED FORMAT
+    if (url.pathname === "/api/players" && request.method === "GET") {
       try {
-        const result = await env.DB.prepare(
-          "SELECT * FROM players ORDER BY id"
-        ).all();
+        const requestedFormat = url.searchParams.get("format") || "T20";
+        const format = getFormat(requestedFormat);
+
+        if (!format) {
+          return Response.json(
+            { error: "Invalid format. Use Test, ODI, or T20." },
+            { status: 400 }
+          );
+        }
+
+        const result = await env.DB.prepare(`
+          SELECT
+            p.id,
+            p.name,
+            s.format,
+            s.matches,
+            s.innings,
+            s.runs,
+            s.balls_faced,
+            s.highest_score,
+            s.batting_average,
+            s.strike_rate,
+            s.wickets,
+            s.balls_bowled,
+            s.runs_conceded,
+            s.economy,
+            s.bowling_average,
+            s.best_batting,
+            s.best_bowling
+          FROM players p
+          INNER JOIN player_format_stats s
+            ON s.player_id = p.id
+          WHERE s.format = ?
+          ORDER BY p.id
+        `)
+          .bind(format)
+          .all();
 
         return Response.json(result.results, {
           headers: { "Cache-Control": "no-store" }
@@ -176,11 +199,8 @@ export default {
       }
     }
 
-    // UPDATE PLAYER STATISTICS
-    if (
-      url.pathname === "/api/players" &&
-      request.method === "POST"
-    ) {
+    // UPDATE STATISTICS FOR ONE PLAYER AND ONE FORMAT
+    if (url.pathname === "/api/players" && request.method === "POST") {
       if (!(await isAdmin(request, env.ADMIN_PASSWORD))) {
         return Response.json(
           { error: "Admin login required" },
@@ -191,6 +211,7 @@ export default {
       try {
         const body = await request.json();
         const id = Number(body.id);
+        const format = getFormat(body.format || "T20");
 
         if (!Number.isInteger(id) || id < 1) {
           return Response.json(
@@ -199,9 +220,16 @@ export default {
           );
         }
 
+        if (!format) {
+          return Response.json(
+            { error: "Invalid format" },
+            { status: 400 }
+          );
+        }
+
         const updates = [];
 
-        for (const [field, type] of Object.entries(STAT_FIELDS)) {
+        for (const [field, type] of Object.entries(NUMERIC_FIELDS)) {
           if (body[field] === undefined) continue;
 
           const value = body[field];
@@ -221,7 +249,7 @@ export default {
           updates.push({ field, value });
         }
 
-        for (const field of Object.keys(TEXT_FIELDS)) {
+        for (const field of TEXT_FIELDS) {
           if (body[field] === undefined) continue;
 
           if (
@@ -234,10 +262,7 @@ export default {
             );
           }
 
-          updates.push({
-            field,
-            value: body[field]
-          });
+          updates.push({ field, value: body[field] });
         }
 
         if (updates.length === 0) {
@@ -253,22 +278,26 @@ export default {
 
         const values = updates.map(item => item.value);
 
-        const result = await env.DB.prepare(
-          `UPDATE players SET ${assignments} WHERE id = ?`
-        )
-          .bind(...values, id)
+        const result = await env.DB.prepare(`
+          UPDATE player_format_stats
+          SET ${assignments}
+          WHERE player_id = ? AND format = ?
+        `)
+          .bind(...values, id, format)
           .run();
 
         if (result.meta.changes === 0) {
-          const player = await env.DB.prepare(
-            "SELECT id FROM players WHERE id = ?"
-          )
-            .bind(id)
+          const record = await env.DB.prepare(`
+            SELECT player_id
+            FROM player_format_stats
+            WHERE player_id = ? AND format = ?
+          `)
+            .bind(id, format)
             .first();
 
-          if (!player) {
+          if (!record) {
             return Response.json(
-              { error: "Player not found" },
+              { error: "Player format record not found" },
               { status: 404 }
             );
           }
