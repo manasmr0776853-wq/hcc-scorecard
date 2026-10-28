@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HCC Scorecard</title>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
 body{background:#f1f5f9;color:#111827}
@@ -13,17 +14,20 @@ header p{margin-top:7px;color:#cbd5e1}
 .container{max-width:950px;margin:auto;padding:16px}
 .section{background:white;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 3px 12px #00000012}
 .section h2{margin-bottom:14px;font-size:21px}
+.formats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:18px}
+.format-btn{padding:14px 5px;border:2px solid #cbd5e1;border-radius:10px;background:white;color:#111827;font-weight:bold;font-size:16px}
+.format-btn.active{background:#111827;color:white;border-color:#111827}
 .players{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px}
 .player{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:17px 8px;text-align:center;font-size:16px;font-weight:bold;cursor:pointer;color:#1e3a8a}
-.player:active{transform:scale(.98)}
 .player small{display:block;font-size:12px;font-weight:normal;margin-top:7px;color:#475569}
 .ranking{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px;margin:8px 0;background:#f8fafc;border-radius:10px}
-.ranking span:last-child{text-align:right;font-weight:bold}
+.ranking span:first-child{overflow-wrap:anywhere}
+.ranking span:last-child{text-align:right;font-weight:bold;font-size:13px}
 button{cursor:pointer}
 .admin-button,.primary{display:block;width:100%;padding:14px;border:0;border-radius:10px;background:#111827;color:white;font-size:16px;font-weight:bold}
 .secondary{display:block;width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:9px;background:white;color:#111827;font-size:15px;margin-top:10px}
 footer{text-align:center;padding:22px;color:#64748b}
-.hint{font-size:13px;color:#64748b;margin-top:8px}
+.hint{font-size:13px;color:#64748b;margin-top:8px;line-height:1.5}
 #profile{position:fixed;inset:0;background:#f1f5f9;z-index:1000;overflow:auto;padding:16px;display:none}
 .profile-inner{max-width:600px;margin:auto;background:white;border-radius:14px;padding:20px}
 .profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
@@ -35,9 +39,10 @@ label{font-weight:bold;font-size:14px}
 #admin-editor{position:fixed;inset:0;background:#f1f5f9;z-index:2000;overflow:auto;padding:15px}
 .admin-inner{max-width:520px;margin:auto;background:white;padding:20px;border-radius:14px}
 .message{margin-top:12px;line-height:1.5}
-@media(max-width:380px){.profile-grid{grid-template-columns:1fr}.section{padding:14px}}
+@media(max-width:380px){.profile-grid{grid-template-columns:1fr}.section{padding:14px}.ranking{align-items:flex-start}}
 </style>
 </head>
+
 <body>
 
 <header>
@@ -46,6 +51,17 @@ label{font-weight:bold;font-size:14px}
 </header>
 
 <main class="container">
+
+<section class="section">
+<h2>🏏 Match Format</h2>
+<div class="formats">
+<button class="format-btn" data-format="Test">Test</button>
+<button class="format-btn" data-format="ODI">ODI</button>
+<button class="format-btn active" data-format="T20">T20</button>
+</div>
+<p class="hint" id="format-description">Showing T20 career statistics.</p>
+</section>
+
 <section class="section">
 <h2>👥 Players</h2>
 <p class="hint">Tap a player to view their statistics.</p>
@@ -72,6 +88,7 @@ label{font-weight:bold;font-size:14px}
 <button class="admin-button" id="open-admin">Open Admin Panel</button>
 <p class="hint">Only the administrator can update statistics.</p>
 </section>
+
 </main>
 
 <footer>HCC Scorecard 🏏</footer>
@@ -79,7 +96,7 @@ label{font-weight:bold;font-size:14px}
 <div id="profile">
   <div class="profile-inner">
     <h2 id="profile-title">Player Statistics</h2>
-    <p class="hint">Career statistics</p>
+    <p class="hint" id="profile-format"></p>
     <div id="profile-stats" class="profile-grid"></div>
     <button class="primary" id="close-profile">Back to Scorecard</button>
   </div>
@@ -88,6 +105,11 @@ label{font-weight:bold;font-size:14px}
 <script>
 let cachedPlayers = [];
 let adminLoggedIn = false;
+let currentFormat = "T20";
+let adminFormat = "T20";
+let adminPlayers = [];
+
+const FORMATS = ["Test","ODI","T20"];
 
 const STAT_FIELDS = [
   ["matches","Matches"],
@@ -106,6 +128,11 @@ const STAT_FIELDS = [
   ["best_bowling","Best Bowling"]
 ];
 
+const INTEGER_FIELDS = [
+  "matches","innings","runs","balls_faced","highest_score",
+  "wickets","balls_bowled","runs_conceded"
+];
+
 function number(p,key){
   const n = Number(p[key]);
   return Number.isFinite(n) ? n : 0;
@@ -114,6 +141,11 @@ function number(p,key){
 function display(p,key){
   const value = p[key];
   return value === undefined || value === null || value === "" ? "—" : value;
+}
+
+function formatNumber(value){
+  const n = Number(value);
+  return Number.isFinite(n) ? String(Math.round(n*100)/100) : "0";
 }
 
 function makeRankingRow(position,name,value){
@@ -160,8 +192,8 @@ function renderRankings(players){
     batBox.appendChild(makeRankingRow(
       i,p.name,
       "Runs: "+number(p,"runs")+
-      " | Avg: "+number(p,"batting_average")+
-      " | SR: "+number(p,"strike_rate")
+      " | Avg: "+formatNumber(p.batting_average)+
+      " | SR: "+formatNumber(p.strike_rate)
     ));
   });
 
@@ -169,26 +201,49 @@ function renderRankings(players){
     bowlBox.appendChild(makeRankingRow(
       i,p.name,
       "Wkts: "+number(p,"wickets")+
-      " | Econ: "+number(p,"economy")+
-      " | Avg: "+number(p,"bowling_average")
+      " | Econ: "+formatNumber(p.economy)+
+      " | Avg: "+formatNumber(p.bowling_average)
     ));
   });
 
   allrounders.slice(0,3).forEach((p,i) => {
     const points = number(p,"runs")+number(p,"wickets")*20;
-    allBox.appendChild(makeRankingRow(i,p.name,points+" points"));
+    allBox.appendChild(makeRankingRow(i,p.name,formatNumber(points)+" points"));
   });
+
+  if(players.length===0){
+    batBox.textContent = "No players available.";
+    bowlBox.textContent = "No players available.";
+    allBox.textContent = "No players available.";
+  }
+}
+
+async function fetchPlayers(format){
+  const response = await fetch(
+    "/api/players?format="+encodeURIComponent(format),
+    {cache:"no-store"}
+  );
+
+  if(!response.ok) throw new Error("Could not load players");
+  const players = await response.json();
+
+  if(!Array.isArray(players)) throw new Error("Invalid player data");
+  return players;
 }
 
 async function loadPlayers(){
   const playerBox = document.getElementById("players");
+  playerBox.textContent = "Loading players...";
+
+  document.getElementById("format-description").textContent =
+    "Showing "+currentFormat+" career statistics.";
 
   try{
-    const response = await fetch("/api/players",{cache:"no-store"});
-    if(!response.ok) throw new Error("Request failed");
+    const players = await fetchPlayers(currentFormat);
 
-    const players = await response.json();
-    if(!Array.isArray(players)) throw new Error("Invalid player data");
+    if(currentFormat !== document.querySelector(".format-btn.active")?.dataset.format){
+      return;
+    }
 
     cachedPlayers = players;
     playerBox.replaceChildren();
@@ -200,7 +255,7 @@ async function loadPlayers(){
       card.textContent = p.name;
 
       const hint = document.createElement("small");
-      hint.textContent = "View statistics";
+      hint.textContent = "View "+currentFormat+" statistics";
       card.appendChild(hint);
 
       card.addEventListener("click",()=>showProfile(p.id));
@@ -216,32 +271,30 @@ async function loadPlayers(){
   }
 }
 
+document.querySelectorAll(".format-btn").forEach(button=>{
+  button.addEventListener("click",async()=>{
+    currentFormat = button.dataset.format;
+
+    document.querySelectorAll(".format-btn").forEach(item=>{
+      item.classList.toggle("active",item===button);
+    });
+
+    await loadPlayers();
+  });
+});
+
 function showProfile(id){
   const p = cachedPlayers.find(player => Number(player.id)===Number(id));
   if(!p) return;
 
   document.getElementById("profile-title").textContent = "🏏 "+p.name;
+  document.getElementById("profile-format").textContent =
+    currentFormat+" career statistics";
+
   const box = document.getElementById("profile-stats");
   box.replaceChildren();
 
-  const profileFields = [
-    ["matches","Matches"],
-    ["innings","Innings"],
-    ["runs","Runs"],
-    ["balls_faced","Balls Faced"],
-    ["highest_score","Highest Score"],
-    ["batting_average","Batting Average"],
-    ["strike_rate","Strike Rate"],
-    ["wickets","Wickets"],
-    ["balls_bowled","Balls Bowled"],
-    ["runs_conceded","Runs Conceded"],
-    ["economy","Economy"],
-    ["bowling_average","Bowling Average"],
-    ["best_batting","Best Batting"],
-    ["best_bowling","Best Bowling"]
-  ];
-
-  profileFields.forEach(([key,label])=>{
+  STAT_FIELDS.forEach(([key,label])=>{
     const item = document.createElement("div");
     item.className = "stat";
 
@@ -282,6 +335,7 @@ async function openAdmin(){
     }
 
     adminLoggedIn = true;
+    adminFormat = currentFormat;
     await showAdminEditor();
   }catch{
     alert("Login failed. Please try again.");
@@ -289,28 +343,28 @@ async function openAdmin(){
 }
 
 async function showAdminEditor(){
-  let players;
-
-  try{
-    const response = await fetch("/api/players",{cache:"no-store"});
-    if(!response.ok) throw new Error();
-    players = await response.json();
-  }catch{
-    alert("Could not load players.");
-    return;
-  }
-
   document.getElementById("admin-editor")?.remove();
 
   const panel = document.createElement("div");
   panel.id = "admin-editor";
+
   panel.innerHTML = `
     <div class="admin-inner">
       <h2>🏏 Admin Panel</h2>
-      <p class="hint">Update statistics for any player.</p>
+      <p class="hint">Choose a format and update that format's statistics only.</p>
+
+      <label for="admin-format">Match Format</label>
+      <select id="admin-format">
+        <option value="Test">Test</option>
+        <option value="ODI">ODI</option>
+        <option value="T20">T20</option>
+      </select>
+
       <label for="admin-player">Player</label>
       <select id="admin-player"></select>
+
       <div id="admin-fields"></div>
+
       <button class="primary" id="save-stats">Save Statistics</button>
       <button class="secondary" id="close-admin">Close Admin Panel</button>
       <p id="admin-message" class="message" role="status"></p>
@@ -318,19 +372,53 @@ async function showAdminEditor(){
 
   document.body.appendChild(panel);
 
-  const select = panel.querySelector("#admin-player");
+  const formatSelect = panel.querySelector("#admin-format");
+  const playerSelect = panel.querySelector("#admin-player");
   const fields = panel.querySelector("#admin-fields");
+  const message = panel.querySelector("#admin-message");
+  const saveButton = panel.querySelector("#save-stats");
 
-  players.forEach(p=>{
-    const option = document.createElement("option");
-    option.value = p.id;
-    option.textContent = p.name;
-    select.appendChild(option);
-  });
+  formatSelect.value = adminFormat;
 
-  function renderFields(){
-    const p = players.find(item=>Number(item.id)===Number(select.value));
+  async function loadAdminFormat(){
+    adminFormat = formatSelect.value;
+    message.textContent = "Loading "+adminFormat+" statistics...";
+    saveButton.disabled = true;
     fields.replaceChildren();
+
+    try{
+      adminPlayers = await fetchPlayers(adminFormat);
+
+      playerSelect.replaceChildren();
+
+      adminPlayers.forEach(p=>{
+        const option = document.createElement("option");
+        option.value = p.id;
+        option.textContent = p.name;
+        playerSelect.appendChild(option);
+      });
+
+      if(adminPlayers.length===0){
+        message.textContent = "No players found.";
+        return;
+      }
+
+      renderAdminFields();
+      message.textContent = "Editing "+adminFormat+" statistics.";
+    }catch{
+      message.textContent = "Could not load this format's statistics.";
+    }finally{
+      saveButton.disabled = false;
+    }
+  }
+
+  function renderAdminFields(){
+    const p = adminPlayers.find(
+      item=>Number(item.id)===Number(playerSelect.value)
+    );
+
+    fields.replaceChildren();
+    if(!p) return;
 
     STAT_FIELDS.forEach(([key,label])=>{
       const caption = document.createElement("label");
@@ -345,12 +433,14 @@ async function showAdminEditor(){
       if(key==="best_batting" || key==="best_bowling"){
         input.type = "text";
         input.maxLength = 50;
-        input.placeholder = key==="best_batting" ? "Example: 75* (40 balls)" : "Example: 3/20 (4 overs)";
+        input.placeholder = key==="best_batting"
+          ? "Example: 75* (40 balls)"
+          : "Example: 3/20 (4 overs)";
         input.value = p[key] ?? "0";
       }else{
         input.type = "number";
         input.min = "0";
-        input.step = ["matches","innings","runs","balls_faced","highest_score","wickets","balls_bowled","runs_conceded"].includes(key) ? "1" : "any";
+        input.step = INTEGER_FIELDS.includes(key) ? "1" : "any";
         input.value = p[key] ?? 0;
       }
 
@@ -358,18 +448,28 @@ async function showAdminEditor(){
     });
   }
 
-  select.addEventListener("change",renderFields);
-  renderFields();
+  formatSelect.addEventListener("change",loadAdminFormat);
+  playerSelect.addEventListener("change",renderAdminFields);
 
-  panel.querySelector("#save-stats").addEventListener("click",async()=>{
+  saveButton.addEventListener("click",async()=>{
     if(!adminLoggedIn) return;
 
-    const button = panel.querySelector("#save-stats");
-    const message = panel.querySelector("#admin-message");
-    button.disabled = true;
-    message.textContent = "Saving...";
+    const selectedPlayer = adminPlayers.find(
+      p=>Number(p.id)===Number(playerSelect.value)
+    );
 
-    const payload = {id:Number(select.value)};
+    if(!selectedPlayer){
+      message.textContent = "Please select a player.";
+      return;
+    }
+
+    saveButton.disabled = true;
+    message.textContent = "Saving "+adminFormat+" statistics...";
+
+    const payload = {
+      id:Number(playerSelect.value),
+      format:adminFormat
+    };
 
     for(const [key] of STAT_FIELDS){
       const input = panel.querySelector("#field-"+key);
@@ -380,12 +480,11 @@ async function showAdminEditor(){
       }
 
       const value = input.valueAsNumber;
-      const integerFields = ["matches","innings","runs","balls_faced","highest_score","wickets","balls_bowled","runs_conceded"];
 
       if(input.value.trim()==="" || !Number.isFinite(value) || value<0 ||
-        (integerFields.includes(key) && !Number.isInteger(value))){
+        (INTEGER_FIELDS.includes(key) && !Number.isInteger(value))){
         message.textContent = "Please enter valid statistics.";
-        button.disabled = false;
+        saveButton.disabled = false;
         return;
       }
 
@@ -407,35 +506,39 @@ async function showAdminEditor(){
         return;
       }
 
-      message.textContent = "Statistics saved successfully!";
-      await loadPlayers();
+      message.textContent = adminFormat+" statistics saved successfully!";
 
-      const updated = cachedPlayers.find(p=>Number(p.id)===Number(select.value));
-      if(updated){
-        players = players.map(p=>Number(p.id)===Number(updated.id)?updated:p);
+      if(currentFormat===adminFormat){
+        await loadPlayers();
       }
 
-      renderFields();
+      await loadAdminFormat();
     }catch{
       message.textContent = "Network error. Please try again.";
     }finally{
-      button.disabled = false;
+      saveButton.disabled = false;
     }
   });
 
   panel.querySelector("#close-admin").addEventListener("click",async()=>{
     try{
-      await fetch("/api/logout",{method:"POST",credentials:"same-origin"});
+      await fetch("/api/logout",{
+        method:"POST",
+        credentials:"same-origin"
+      });
     }finally{
       adminLoggedIn = false;
       panel.remove();
     }
   });
+
+  await loadAdminFormat();
 }
 
 document.getElementById("open-admin").addEventListener("click",openAdmin);
 
 loadPlayers();
 </script>
+
 </body>
   </html>
