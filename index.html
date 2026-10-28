@@ -2,154 +2,300 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HCC Scorecard</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
-body{background:#f4f6f8;color:#111827}
-header{background:#111827;color:white;padding:25px 15px;text-align:center}
-header h1{font-size:30px}
-header p{margin-top:6px;color:#cbd5e1}
-.container{max-width:900px;margin:auto;padding:20px}
-.section{background:white;border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:0 3px 12px #00000014}
-.section h2{margin-bottom:15px}
-.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.player{background:#eef2ff;border-radius:12px;padding:18px;text-align:center;font-size:18px;font-weight:bold}
-.ranking{display:flex;justify-content:space-between;gap:10px;padding:14px;margin:8px 0;background:#f8fafc;border-radius:10px}
-.admin-button{display:block;width:100%;padding:15px;border:0;border-radius:10px;background:#111827;color:white;font-size:17px;font-weight:bold}
-footer{text-align:center;padding:25px;color:#64748b}
+body{background:#f1f5f9;color:#111827}
+header{background:#111827;color:white;padding:26px 15px;text-align:center}
+header h1{font-size:29px}
+header p{margin-top:7px;color:#cbd5e1}
+.container{max-width:950px;margin:auto;padding:16px}
+.section{background:white;border-radius:14px;padding:18px;margin-bottom:18px;box-shadow:0 3px 12px #00000012}
+.section h2{margin-bottom:14px;font-size:21px}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px}
+.player{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:17px 8px;text-align:center;font-size:16px;font-weight:bold;cursor:pointer;color:#1e3a8a}
+.player:active{transform:scale(.98)}
+.player small{display:block;font-size:12px;font-weight:normal;margin-top:7px;color:#475569}
+.ranking{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px;margin:8px 0;background:#f8fafc;border-radius:10px}
+.ranking span:last-child{text-align:right;font-weight:bold}
+button{cursor:pointer}
+.admin-button,.primary{display:block;width:100%;padding:14px;border:0;border-radius:10px;background:#111827;color:white;font-size:16px;font-weight:bold}
+.secondary{display:block;width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:9px;background:white;color:#111827;font-size:15px;margin-top:10px}
+footer{text-align:center;padding:22px;color:#64748b}
+.hint{font-size:13px;color:#64748b;margin-top:8px}
+#profile{position:fixed;inset:0;background:#f1f5f9;z-index:1000;overflow:auto;padding:16px;display:none}
+.profile-inner{max-width:600px;margin:auto;background:white;border-radius:14px;padding:20px}
+.profile-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.stat{background:#f8fafc;border-radius:9px;padding:12px;overflow-wrap:anywhere}
+.stat small{display:block;color:#64748b;font-size:12px;margin-bottom:5px}
+.stat strong{font-size:17px}
+input,select{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:8px;font-size:16px;margin:6px 0 14px;background:white}
+label{font-weight:bold;font-size:14px}
+#admin-editor{position:fixed;inset:0;background:#f1f5f9;z-index:2000;overflow:auto;padding:15px}
+.admin-inner{max-width:520px;margin:auto;background:white;padding:20px;border-radius:14px}
+.message{margin-top:12px;line-height:1.5}
+@media(max-width:380px){.profile-grid{grid-template-columns:1fr}.section{padding:14px}}
 </style>
 </head>
 <body>
+
 <header>
 <h1>🏏 HCC Scorecard</h1>
 <p>Cricket Statistics & Rankings</p>
 </header>
 
-<div class="container">
+<main class="container">
 <section class="section">
 <h2>👥 Players</h2>
-<div class="players" id="players">
-<div class="player">Manas Raj</div>
-<div class="player">Yash Raj</div>
-<div class="player">Ishani Raj</div>
-<div class="player">Altamash</div>
-<div class="player">Samar</div>
-<div class="player">Shivam</div>
-<div class="player">Himanshu</div>
-<div class="player">Devraj</div>
-<div class="player">Abhishek</div>
-<div class="player">Kanishk</div>
-</div>
+<p class="hint">Tap a player to view their statistics.</p>
+<div class="players" id="players">Loading players...</div>
 </section>
 
 <section class="section">
 <h2>🏆 Best Batsmen</h2>
-<div id="batsmen"><p>Loading statistics...</p></div>
+<div id="batsmen">Loading statistics...</div>
 </section>
 
 <section class="section">
 <h2>🎯 Best Bowlers</h2>
-<div id="bowlers"><p>Loading statistics...</p></div>
+<div id="bowlers">Loading statistics...</div>
 </section>
 
 <section class="section">
 <h2>💪 Best All-Rounders</h2>
-<div id="allrounders"><p>Loading statistics...</p></div>
+<div id="allrounders">Loading statistics...</div>
 </section>
 
 <section class="section">
 <h2>🔐 Admin</h2>
-<button class="admin-button" onclick="openAdmin()">Open Admin Panel</button>
+<button class="admin-button" id="open-admin">Open Admin Panel</button>
+<p class="hint">Only the administrator can update statistics.</p>
 </section>
-</div>
+</main>
 
 <footer>HCC Scorecard 🏏</footer>
 
+<div id="profile">
+  <div class="profile-inner">
+    <h2 id="profile-title">Player Statistics</h2>
+    <p class="hint">Career statistics</p>
+    <div id="profile-stats" class="profile-grid"></div>
+    <button class="primary" id="close-profile">Back to Scorecard</button>
+  </div>
+</div>
+
 <script>
+let cachedPlayers = [];
 let adminLoggedIn = false;
 
-async function loadPlayers() {
-  try {
-    const response = await fetch("/api/players", {cache:"no-store"});
-    if (!response.ok) throw new Error();
-    const players = await response.json();
+const STAT_FIELDS = [
+  ["matches","Matches"],
+  ["innings","Innings"],
+  ["runs","Runs"],
+  ["balls_faced","Balls Faced"],
+  ["highest_score","Highest Score"],
+  ["batting_average","Batting Average"],
+  ["strike_rate","Strike Rate"],
+  ["wickets","Wickets"],
+  ["balls_bowled","Balls Bowled"],
+  ["runs_conceded","Runs Conceded"],
+  ["economy","Economy"],
+  ["bowling_average","Bowling Average"],
+  ["best_batting","Best Batting"],
+  ["best_bowling","Best Bowling"]
+];
 
-    const playerBox = document.getElementById("players");
+function number(p,key){
+  const n = Number(p[key]);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function display(p,key){
+  const value = p[key];
+  return value === undefined || value === null || value === "" ? "—" : value;
+}
+
+function makeRankingRow(position,name,value){
+  const row = document.createElement("div");
+  row.className = "ranking";
+
+  const left = document.createElement("span");
+  left.textContent = ["🥇","🥈","🥉"][position] + " " + name;
+
+  const right = document.createElement("span");
+  right.textContent = value;
+
+  row.append(left,right);
+  return row;
+}
+
+function renderRankings(players){
+  const batsmen = [...players].sort((a,b) =>
+    number(b,"runs")-number(a,"runs") ||
+    number(b,"batting_average")-number(a,"batting_average") ||
+    number(b,"strike_rate")-number(a,"strike_rate")
+  );
+
+  const bowlers = [...players].sort((a,b) =>
+    number(b,"wickets")-number(a,"wickets") ||
+    number(a,"economy")-number(b,"economy") ||
+    number(a,"bowling_average")-number(b,"bowling_average")
+  );
+
+  const allrounders = [...players].sort((a,b) =>
+    (number(b,"runs")+number(b,"wickets")*20) -
+    (number(a,"runs")+number(a,"wickets")*20)
+  );
+
+  const batBox = document.getElementById("batsmen");
+  const bowlBox = document.getElementById("bowlers");
+  const allBox = document.getElementById("allrounders");
+
+  batBox.replaceChildren();
+  bowlBox.replaceChildren();
+  allBox.replaceChildren();
+
+  batsmen.slice(0,3).forEach((p,i) => {
+    batBox.appendChild(makeRankingRow(
+      i,p.name,
+      "Runs: "+number(p,"runs")+
+      " | Avg: "+number(p,"batting_average")+
+      " | SR: "+number(p,"strike_rate")
+    ));
+  });
+
+  bowlers.slice(0,3).forEach((p,i) => {
+    bowlBox.appendChild(makeRankingRow(
+      i,p.name,
+      "Wkts: "+number(p,"wickets")+
+      " | Econ: "+number(p,"economy")+
+      " | Avg: "+number(p,"bowling_average")
+    ));
+  });
+
+  allrounders.slice(0,3).forEach((p,i) => {
+    const points = number(p,"runs")+number(p,"wickets")*20;
+    allBox.appendChild(makeRankingRow(i,p.name,points+" points"));
+  });
+}
+
+async function loadPlayers(){
+  const playerBox = document.getElementById("players");
+
+  try{
+    const response = await fetch("/api/players",{cache:"no-store"});
+    if(!response.ok) throw new Error("Request failed");
+
+    const players = await response.json();
+    if(!Array.isArray(players)) throw new Error("Invalid player data");
+
+    cachedPlayers = players;
     playerBox.replaceChildren();
 
     players.forEach(p => {
-      const card = document.createElement("div");
+      const card = document.createElement("button");
+      card.type = "button";
       card.className = "player";
       card.textContent = p.name;
+
+      const hint = document.createElement("small");
+      hint.textContent = "View statistics";
+      card.appendChild(hint);
+
+      card.addEventListener("click",()=>showProfile(p.id));
       playerBox.appendChild(card);
     });
 
-    function ranking(boxId, key, label) {
-      const box = document.getElementById(boxId);
-      box.replaceChildren();
-      const sorted = [...players].sort((a,b) => (Number(b[key])||0)-(Number(a[key])||0));
-      sorted.slice(0,3).forEach((p,i) => {
-        const row = document.createElement("div");
-        row.className = "ranking";
-        const name = document.createElement("span");
-        name.textContent = ["🥇","🥈","🥉"][i] + " " + p.name;
-        const value = document.createElement("span");
-        value.textContent = label + ": " + (p[key] ?? 0);
-        row.append(name,value);
-        box.appendChild(row);
-      });
-    }
-
-    ranking("batsmen","runs","Runs");
-    ranking("bowlers","wickets","Wickets");
-
-    const box = document.getElementById("allrounders");
-    box.replaceChildren();
-    [...players]
-      .sort((a,b) => ((Number(b.runs)||0)+(Number(b.wickets)||0))-((Number(a.runs)||0)+(Number(a.wickets)||0)))
-      .slice(0,3)
-      .forEach((p,i) => {
-        const row = document.createElement("div");
-        row.className = "ranking";
-        row.textContent = ["🥇","🥈","🥉"][i] + " " + p.name + " — " + (Number(p.runs||0)+Number(p.wickets||0)) + " points";
-        box.appendChild(row);
-      });
-  } catch {
-    document.getElementById("players").textContent = "Could not load players.";
+    renderRankings(players);
+  }catch(error){
+    playerBox.textContent = "Could not load players. Please refresh.";
+    document.getElementById("batsmen").textContent = "Statistics unavailable.";
+    document.getElementById("bowlers").textContent = "Statistics unavailable.";
+    document.getElementById("allrounders").textContent = "Statistics unavailable.";
   }
 }
 
-async function openAdmin() {
-  const password = prompt("Enter Admin Password:");
-  if (password === null) return;
+function showProfile(id){
+  const p = cachedPlayers.find(player => Number(player.id)===Number(id));
+  if(!p) return;
 
-  try {
-    const response = await fetch("/api/login", {
+  document.getElementById("profile-title").textContent = "🏏 "+p.name;
+  const box = document.getElementById("profile-stats");
+  box.replaceChildren();
+
+  const profileFields = [
+    ["matches","Matches"],
+    ["innings","Innings"],
+    ["runs","Runs"],
+    ["balls_faced","Balls Faced"],
+    ["highest_score","Highest Score"],
+    ["batting_average","Batting Average"],
+    ["strike_rate","Strike Rate"],
+    ["wickets","Wickets"],
+    ["balls_bowled","Balls Bowled"],
+    ["runs_conceded","Runs Conceded"],
+    ["economy","Economy"],
+    ["bowling_average","Bowling Average"],
+    ["best_batting","Best Batting"],
+    ["best_bowling","Best Bowling"]
+  ];
+
+  profileFields.forEach(([key,label])=>{
+    const item = document.createElement("div");
+    item.className = "stat";
+
+    const caption = document.createElement("small");
+    caption.textContent = label;
+
+    const value = document.createElement("strong");
+    value.textContent = display(p,key);
+
+    item.append(caption,value);
+    box.appendChild(item);
+  });
+
+  document.getElementById("profile").style.display = "block";
+}
+
+document.getElementById("close-profile").addEventListener("click",()=>{
+  document.getElementById("profile").style.display = "none";
+});
+
+async function openAdmin(){
+  const password = prompt("Enter Admin Password:");
+  if(password===null) return;
+
+  try{
+    const response = await fetch("/api/login",{
       method:"POST",
       credentials:"same-origin",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({password})
     });
-    const data = await response.json();
-    if (!response.ok || !data.success) {
+
+    const result = await response.json();
+
+    if(!response.ok || !result.success){
       alert("Login failed. Check your password.");
       return;
     }
+
     adminLoggedIn = true;
     await showAdminEditor();
-  } catch {
+  }catch{
     alert("Login failed. Please try again.");
   }
 }
 
-async function showAdminEditor() {
+async function showAdminEditor(){
   let players;
-  try {
-    const response = await fetch("/api/players", {cache:"no-store"});
-    if (!response.ok) throw new Error();
+
+  try{
+    const response = await fetch("/api/players",{cache:"no-store"});
+    if(!response.ok) throw new Error();
     players = await response.json();
-  } catch {
+  }catch{
     alert("Could not load players.");
     return;
   }
@@ -158,112 +304,136 @@ async function showAdminEditor() {
 
   const panel = document.createElement("div");
   panel.id = "admin-editor";
-  panel.style.cssText = "position:fixed;inset:0;background:#f4f6f8;z-index:9999;overflow:auto;padding:20px";
   panel.innerHTML = `
-    <div style="max-width:500px;margin:auto;background:white;padding:20px;border-radius:14px">
+    <div class="admin-inner">
       <h2>🏏 Admin Panel</h2>
-      <p style="margin:12px 0">Select a player and update their statistics.</p>
+      <p class="hint">Update statistics for any player.</p>
       <label for="admin-player">Player</label>
-      <select id="admin-player" style="width:100%;padding:12px;margin:8px 0 16px"></select>
+      <select id="admin-player"></select>
       <div id="admin-fields"></div>
-      <button id="save-stats" style="width:100%;padding:14px;background:#111827;color:white;border:0;border-radius:8px;margin-top:15px">Save Statistics</button>
-      <button id="close-admin" style="width:100%;padding:14px;margin-top:10px">Close Admin Panel</button>
-      <p id="admin-message" role="status" style="margin-top:12px"></p>
+      <button class="primary" id="save-stats">Save Statistics</button>
+      <button class="secondary" id="close-admin">Close Admin Panel</button>
+      <p id="admin-message" class="message" role="status"></p>
     </div>`;
 
   document.body.appendChild(panel);
+
   const select = panel.querySelector("#admin-player");
   const fields = panel.querySelector("#admin-fields");
 
-  players.forEach(p => {
+  players.forEach(p=>{
     const option = document.createElement("option");
     option.value = p.id;
     option.textContent = p.name;
     select.appendChild(option);
   });
 
-  const stats = [
-    ["runs","Runs"],["batting_average","Batting Average"],
-    ["strike_rate","Strike Rate"],["wickets","Wickets"],
-    ["economy","Economy"],["bowling_average","Bowling Average"]
-  ];
-
-  function renderFields() {
-    const player = players.find(p => p.id === Number(select.value));
+  function renderFields(){
+    const p = players.find(item=>Number(item.id)===Number(select.value));
     fields.replaceChildren();
 
-    stats.forEach(([key,label]) => {
-      const wrapper = document.createElement("div");
-      wrapper.style.marginBottom = "12px";
+    STAT_FIELDS.forEach(([key,label])=>{
       const caption = document.createElement("label");
       caption.textContent = label;
-      caption.htmlFor = "stat-" + key;
+      caption.htmlFor = "field-"+key;
+      fields.appendChild(caption);
+
       const input = document.createElement("input");
-      input.id = "stat-" + key;
-      input.type = "number";
-      input.min = "0";
-      input.step = ["runs","wickets"].includes(key) ? "1" : "any";
-      input.value = player[key] ?? 0;
-      input.style.cssText = "width:100%;padding:11px;margin-top:5px";
-      wrapper.append(caption,input);
-      fields.appendChild(wrapper);
+      input.id = "field-"+key;
+      input.dataset.key = key;
+
+      if(key==="best_batting" || key==="best_bowling"){
+        input.type = "text";
+        input.maxLength = 50;
+        input.placeholder = key==="best_batting" ? "Example: 75* (40 balls)" : "Example: 3/20 (4 overs)";
+        input.value = p[key] ?? "0";
+      }else{
+        input.type = "number";
+        input.min = "0";
+        input.step = ["matches","innings","runs","balls_faced","highest_score","wickets","balls_bowled","runs_conceded"].includes(key) ? "1" : "any";
+        input.value = p[key] ?? 0;
+      }
+
+      fields.appendChild(input);
     });
   }
 
   select.addEventListener("change",renderFields);
   renderFields();
 
-  panel.querySelector("#save-stats").addEventListener("click",async () => {
-    if (!adminLoggedIn) return;
+  panel.querySelector("#save-stats").addEventListener("click",async()=>{
+    if(!adminLoggedIn) return;
+
     const button = panel.querySelector("#save-stats");
     const message = panel.querySelector("#admin-message");
     button.disabled = true;
     message.textContent = "Saving...";
 
     const payload = {id:Number(select.value)};
-    for (const [key] of stats) {
-      const input = panel.querySelector("#stat-" + key);
+
+    for(const [key] of STAT_FIELDS){
+      const input = panel.querySelector("#field-"+key);
+
+      if(key==="best_batting" || key==="best_bowling"){
+        payload[key] = input.value.trim();
+        continue;
+      }
+
       const value = input.valueAsNumber;
-      if (input.value.trim()==="" || !Number.isFinite(value) || value<0 ||
-          (["runs","wickets"].includes(key) && !Number.isInteger(value))) {
+      const integerFields = ["matches","innings","runs","balls_faced","highest_score","wickets","balls_bowled","runs_conceded"];
+
+      if(input.value.trim()==="" || !Number.isFinite(value) || value<0 ||
+        (integerFields.includes(key) && !Number.isInteger(value))){
         message.textContent = "Please enter valid statistics.";
         button.disabled = false;
         return;
       }
+
       payload[key] = value;
     }
 
-    try {
-      const response = await fetch("/api/players", {
+    try{
+      const response = await fetch("/api/players",{
         method:"POST",
         credentials:"same-origin",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify(payload)
       });
+
       const result = await response.json();
-      if (!response.ok || !result.success) {
+
+      if(!response.ok || !result.success){
         message.textContent = result.error || "Could not save statistics.";
         return;
       }
+
       message.textContent = "Statistics saved successfully!";
       await loadPlayers();
-      await showAdminEditor();
-    } catch {
+
+      const updated = cachedPlayers.find(p=>Number(p.id)===Number(select.value));
+      if(updated){
+        players = players.map(p=>Number(p.id)===Number(updated.id)?updated:p);
+      }
+
+      renderFields();
+    }catch{
       message.textContent = "Network error. Please try again.";
-    } finally {
+    }finally{
       button.disabled = false;
     }
   });
 
-  panel.querySelector("#close-admin").addEventListener("click",async () => {
-    try {
+  panel.querySelector("#close-admin").addEventListener("click",async()=>{
+    try{
       await fetch("/api/logout",{method:"POST",credentials:"same-origin"});
-    } finally {
+    }finally{
       adminLoggedIn = false;
       panel.remove();
     }
   });
 }
+
+document.getElementById("open-admin").addEventListener("click",openAdmin);
 
 loadPlayers();
 </script>
