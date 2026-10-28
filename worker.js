@@ -80,8 +80,28 @@ const NUMERIC_FIELDS = {
 const TEXT_FIELDS = ["best_batting", "best_bowling"];
 const FORMATS = ["Test", "ODI", "T20"];
 
+const RECORD_TYPES = [
+  "highest_individual_score",
+  "highest_team_total",
+  "hat_tricks",
+  "biggest_chase",
+  "best_defense",
+  "most_centuries",
+  "most_half_centuries",
+  "most_wickets_in_match"
+];
+
+const TEAM_NAMES = ["Team M", "Team A", "Team Y", "Team I"];
+
 function getFormat(value) {
   return FORMATS.includes(value) ? value : null;
+}
+
+function json(data, status = 200) {
+  return Response.json(data, {
+    status,
+    headers: { "Cache-Control": "no-store" }
+  });
 }
 
 export default {
@@ -98,9 +118,9 @@ export default {
           typeof body.password !== "string" ||
           body.password !== env.ADMIN_PASSWORD
         ) {
-          return Response.json(
+          return json(
             { success: false, message: "Incorrect password" },
-            { status: 401 }
+            401
           );
         }
 
@@ -126,9 +146,9 @@ export default {
           }
         );
       } catch {
-        return Response.json(
+        return json(
           { success: false, message: "Invalid request" },
-          { status: 400 }
+          400
         );
       }
     }
@@ -150,62 +170,35 @@ export default {
     // LOAD PLAYERS FOR A SELECTED FORMAT
     if (url.pathname === "/api/players" && request.method === "GET") {
       try {
-        const requestedFormat = url.searchParams.get("format") || "T20";
-        const format = getFormat(requestedFormat);
+        const format = getFormat(url.searchParams.get("format") || "T20");
 
         if (!format) {
-          return Response.json(
-            { error: "Invalid format. Use Test, ODI, or T20." },
-            { status: 400 }
-          );
+          return json({ error: "Invalid format" }, 400);
         }
 
         const result = await env.DB.prepare(`
           SELECT
-            p.id,
-            p.name,
-            s.format,
-            s.matches,
-            s.innings,
-            s.runs,
-            s.balls_faced,
-            s.highest_score,
-            s.batting_average,
-            s.strike_rate,
-            s.wickets,
-            s.balls_bowled,
-            s.runs_conceded,
-            s.economy,
-            s.bowling_average,
-            s.best_batting,
-            s.best_bowling
+            p.id, p.name, s.format, s.matches, s.innings, s.runs,
+            s.balls_faced, s.highest_score, s.batting_average,
+            s.strike_rate, s.wickets, s.balls_bowled,
+            s.runs_conceded, s.economy, s.bowling_average,
+            s.best_batting, s.best_bowling
           FROM players p
-          INNER JOIN player_format_stats s
-            ON s.player_id = p.id
+          INNER JOIN player_format_stats s ON s.player_id = p.id
           WHERE s.format = ?
           ORDER BY p.id
-        `)
-          .bind(format)
-          .all();
+        `).bind(format).all();
 
-        return Response.json(result.results, {
-          headers: { "Cache-Control": "no-store" }
-        });
+        return json(result.results);
       } catch {
-        return Response.json(
-          { error: "Could not load players" },
-          { status: 500 }
-        );
+        return json({ error: "Could not load players" }, 500);
       }
     }
 
-    // UPDATE STATISTICS FOR ONE PLAYER AND ONE FORMAT
+    // UPDATE ONE PLAYER'S FORMAT STATISTICS
     if (url.pathname === "/api/players" && request.method === "POST") {
       if (!(await isAdmin(request, env.ADMIN_PASSWORD))) {
-        return Response.json(
-          { error: "Admin login required" },
-          { status: 401 }
-        );
+        return json({ error: "Admin login required" }, 401);
       }
 
       try {
@@ -214,17 +207,11 @@ export default {
         const format = getFormat(body.format || "T20");
 
         if (!Number.isInteger(id) || id < 1) {
-          return Response.json(
-            { error: "Invalid player ID" },
-            { status: 400 }
-          );
+          return json({ error: "Invalid player ID" }, 400);
         }
 
         if (!format) {
-          return Response.json(
-            { error: "Invalid format" },
-            { status: 400 }
-          );
+          return json({ error: "Invalid format" }, 400);
         }
 
         const updates = [];
@@ -240,10 +227,7 @@ export default {
             value < 0 ||
             (type === "INTEGER" && !Number.isInteger(value))
           ) {
-            return Response.json(
-              { error: `Invalid value for ${field}` },
-              { status: 400 }
-            );
+            return json({ error: `Invalid value for ${field}` }, 400);
           }
 
           updates.push({ field, value });
@@ -252,24 +236,15 @@ export default {
         for (const field of TEXT_FIELDS) {
           if (body[field] === undefined) continue;
 
-          if (
-            typeof body[field] !== "string" ||
-            body[field].length > 50
-          ) {
-            return Response.json(
-              { error: `Invalid value for ${field}` },
-              { status: 400 }
-            );
+          if (typeof body[field] !== "string" || body[field].length > 50) {
+            return json({ error: `Invalid value for ${field}` }, 400);
           }
 
           updates.push({ field, value: body[field] });
         }
 
         if (updates.length === 0) {
-          return Response.json(
-            { error: "No statistics provided" },
-            { status: 400 }
-          );
+          return json({ error: "No statistics provided" }, 400);
         }
 
         const assignments = updates
@@ -282,33 +257,165 @@ export default {
           UPDATE player_format_stats
           SET ${assignments}
           WHERE player_id = ? AND format = ?
-        `)
-          .bind(...values, id, format)
-          .run();
+        `).bind(...values, id, format).run();
 
         if (result.meta.changes === 0) {
           const record = await env.DB.prepare(`
-            SELECT player_id
-            FROM player_format_stats
+            SELECT player_id FROM player_format_stats
             WHERE player_id = ? AND format = ?
-          `)
-            .bind(id, format)
-            .first();
+          `).bind(id, format).first();
 
           if (!record) {
-            return Response.json(
-              { error: "Player format record not found" },
-              { status: 404 }
-            );
+            return json({ error: "Player format record not found" }, 404);
           }
         }
 
-        return Response.json({ success: true });
+        return json({ success: true });
       } catch {
-        return Response.json(
-          { error: "Could not update player statistics" },
-          { status: 500 }
-        );
+        return json({ error: "Could not update player statistics" }, 500);
+      }
+    }
+
+    // VIEW RECORDS FOR A FORMAT
+    if (url.pathname === "/api/records" && request.method === "GET") {
+      try {
+        const format = getFormat(url.searchParams.get("format") || "T20");
+
+        if (!format) return json({ error: "Invalid format" }, 400);
+
+        const result = await env.DB.prepare(`
+          SELECT format, record_type, record_value, player_name, team_name
+          FROM records
+          WHERE format = ?
+          ORDER BY record_type
+        `).bind(format).all();
+
+        return json(result.results);
+      } catch {
+        return json({ error: "Could not load records" }, 500);
+      }
+    }
+
+    // ADMIN: ADD OR UPDATE ONE RECORD
+    if (url.pathname === "/api/records" && request.method === "POST") {
+      if (!(await isAdmin(request, env.ADMIN_PASSWORD))) {
+        return json({ error: "Admin login required" }, 401);
+      }
+
+      try {
+        const body = await request.json();
+        const format = getFormat(body.format);
+        const type = body.record_type;
+
+        if (!format) return json({ error: "Invalid format" }, 400);
+
+        if (!RECORD_TYPES.includes(type)) {
+          return json({ error: "Invalid record type" }, 400);
+        }
+
+        const value = String(body.record_value ?? "");
+        const player = String(body.player_name ?? "");
+        const team = String(body.team_name ?? "");
+
+        if (value.length > 200 || player.length > 100 || team.length > 100) {
+          return json({ error: "Record details are too long" }, 400);
+        }
+
+        await env.DB.prepare(`
+          INSERT INTO records
+            (format, record_type, record_value, player_name, team_name)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(format, record_type) DO UPDATE SET
+            record_value = excluded.record_value,
+            player_name = excluded.player_name,
+            team_name = excluded.team_name
+        `).bind(format, type, value, player, team).run();
+
+        return json({ success: true });
+      } catch {
+        return json({ error: "Could not save record" }, 500);
+      }
+    }
+
+    // VIEW TEAMS FOR A FORMAT
+    if (url.pathname === "/api/teams" && request.method === "GET") {
+      try {
+        const format = getFormat(url.searchParams.get("format") || "T20");
+
+        if (!format) return json({ error: "Invalid format" }, 400);
+
+        const result = await env.DB.prepare(`
+          SELECT format, team_name, matches_won, series_won, finals_won
+          FROM team_stats
+          WHERE format = ?
+          ORDER BY team_name
+        `).bind(format).all();
+
+        return json(result.results);
+      } catch {
+        return json({ error: "Could not load teams" }, 500);
+      }
+    }
+
+    // ADMIN: UPDATE TEAM STATISTICS
+    if (url.pathname === "/api/teams" && request.method === "POST") {
+      if (!(await isAdmin(request, env.ADMIN_PASSWORD))) {
+        return json({ error: "Admin login required" }, 401);
+      }
+
+      try {
+        const body = await request.json();
+        const format = getFormat(body.format);
+        const team = body.team_name;
+
+        if (!format) return json({ error: "Invalid format" }, 400);
+
+        if (!TEAM_NAMES.includes(team)) {
+          return json({ error: "Invalid team name" }, 400);
+        }
+
+        const stats = {};
+
+        for (const key of ["matches_won", "series_won", "finals_won"]) {
+          const value = body[key];
+
+          if (
+            typeof value !== "number" ||
+            !Number.isInteger(value) ||
+            value < 0
+          ) {
+            return json({ error: `Invalid value for ${key}` }, 400);
+          }
+
+          stats[key] = value;
+        }
+
+        const result = await env.DB.prepare(`
+          UPDATE team_stats
+          SET matches_won = ?, series_won = ?, finals_won = ?
+          WHERE format = ? AND team_name = ?
+        `).bind(
+          stats.matches_won,
+          stats.series_won,
+          stats.finals_won,
+          format,
+          team
+        ).run();
+
+        if (result.meta.changes === 0) {
+          const existing = await env.DB.prepare(`
+            SELECT id FROM team_stats
+            WHERE format = ? AND team_name = ?
+          `).bind(format, team).first();
+
+          if (!existing) {
+            return json({ error: "Team entry not found" }, 404);
+          }
+        }
+
+        return json({ success: true });
+      } catch {
+        return json({ error: "Could not save team statistics" }, 500);
       }
     }
 
