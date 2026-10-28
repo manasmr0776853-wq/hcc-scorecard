@@ -611,7 +611,89 @@ async function showAdminEditor(){
       panel.remove();
     }
   });
+panel.querySelector("#save-record").addEventListener("click", async () => {
+  const recordData = {
+    format: formatSelect.value,
+    record_type: panel.querySelector("#record-type").value,
+    record_value: panel.querySelector("#record-value").value.trim(),
+    player_name: panel.querySelector("#record-player").value.trim(),
+    team_name: panel.querySelector("#record-team").value.trim()
+  };
 
+  if (!recordData.record_value) {
+    message.textContent = "Please enter the record value.";
+    return;
+  }
+
+  try {
+    message.textContent = "Saving record...";
+
+    const response = await fetch("/api/records", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(recordData)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || result.message || "Could not save record.");
+    }
+
+    message.textContent = "Record saved successfully!";
+
+    document.querySelector("#records-format").value = formatSelect.value;
+    await loadRecords();
+  } catch (error) {
+    message.textContent = error.message || "Could not save record.";
+  }
+});
+  panel.querySelector("#save-team").addEventListener("click", async () => {
+  const teamData = {
+    format: formatSelect.value,
+    team_name: panel.querySelector("#team-name").value,
+    matches_won: Number(panel.querySelector("#matches-won").value),
+    series_won: Number(panel.querySelector("#series-won").value),
+    finals_won: Number(panel.querySelector("#finals-won").value)
+  };
+
+  const stats = [
+    teamData.matches_won,
+    teamData.series_won,
+    teamData.finals_won
+  ];
+
+  if (stats.some(n => !Number.isInteger(n) || n < 0)) {
+    message.textContent = "Enter valid non-negative whole numbers.";
+    return;
+  }
+
+  try {
+    message.textContent = "Saving team statistics...";
+
+    const response = await fetch("/api/teams", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(teamData)
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || result.message || "Could not save team statistics.");
+    }
+
+    message.textContent = "Team statistics saved successfully!";
+
+    document.querySelector("#teams-format").value = formatSelect.value;
+    await loadTeams();
+  } catch (error) {
+    message.textContent = error.message || "Could not save team statistics.";
+  }
+});
+  
   await loadAdminFormat();
 }
 const RECORD_FIELDS = [
