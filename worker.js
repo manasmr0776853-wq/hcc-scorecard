@@ -3,6 +3,7 @@ const COOKIE_NAME = "hcc_admin";
 function toBase64Url(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
+
   return btoa(binary)
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
@@ -12,6 +13,7 @@ function toBase64Url(bytes) {
 function fromBase64Url(value) {
   const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = base64 + "=".repeat((4 - base64.length % 4) % 4);
+
   return Uint8Array.from(atob(padded), c => c.charCodeAt(0));
 }
 
@@ -38,11 +40,11 @@ async function isAdmin(request, secret) {
 
   const cookie = request.headers.get("Cookie") || "";
   const match = cookie.match(/(?:^|;\s*)hcc_admin=([^;]+)/);
+
   if (!match) return false;
 
   try {
-    const token = match[1];
-    const parts = token.split(".");
+    const parts = match[1].split(".");
     if (parts.length !== 2) return false;
 
     const [payload, signature] = parts;
@@ -60,11 +62,35 @@ async function isAdmin(request, secret) {
   }
 }
 
+const STAT_FIELDS = {
+  matches: "INTEGER",
+  innings: "INTEGER",
+  runs: "INTEGER",
+  balls_faced: "INTEGER",
+  highest_score: "INTEGER",
+  batting_average: "REAL",
+  strike_rate: "REAL",
+  wickets: "INTEGER",
+  balls_bowled: "INTEGER",
+  runs_conceded: "INTEGER",
+  economy: "REAL",
+  bowling_average: "REAL"
+};
+
+const TEXT_FIELDS = {
+  best_batting: true,
+  best_bowling: true
+};
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/api/login" && request.method === "POST") {
+    // ADMIN LOGIN
+    if (
+      url.pathname === "/api/login" &&
+      request.method === "POST"
+    ) {
       try {
         const body = await request.json();
 
@@ -81,11 +107,17 @@ export default {
 
         const payload = toBase64Url(
           new TextEncoder().encode(
-            JSON.stringify({ exp: Date.now() + 60 * 60 * 1000 })
+            JSON.stringify({
+              exp: Date.now() + 60 * 60 * 1000
+            })
           )
         );
 
-        const signature = await sign(payload, env.ADMIN_PASSWORD);
+        const signature = await sign(
+          payload,
+          env.ADMIN_PASSWORD
+        );
+
         const token = `${payload}.${signature}`;
 
         return Response.json(
@@ -106,19 +138,28 @@ export default {
       }
     }
 
-    if (url.pathname === "/api/logout" && request.method === "POST") {
+    // ADMIN LOGOUT
+    if (
+      url.pathname === "/api/logout" &&
+      request.method === "POST"
+    ) {
       return Response.json(
         { success: true },
         {
           headers: {
             "Set-Cookie":
-              `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`
+              `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`,
+            "Cache-Control": "no-store"
           }
         }
       );
     }
 
-    if (url.pathname === "/api/players" && request.method === "GET") {
+    // LOAD ALL PLAYERS
+    if (
+      url.pathname === "/api/players" &&
+      request.method === "GET"
+    ) {
       try {
         const result = await env.DB.prepare(
           "SELECT * FROM players ORDER BY id"
@@ -135,7 +176,11 @@ export default {
       }
     }
 
-    if (url.pathname === "/api/players" && request.method === "POST") {
+    // UPDATE PLAYER STATISTICS
+    if (
+      url.pathname === "/api/players" &&
+      request.method === "POST"
+    ) {
       if (!(await isAdmin(request, env.ADMIN_PASSWORD))) {
         return Response.json(
           { error: "Admin login required" },
@@ -154,18 +199,9 @@ export default {
           );
         }
 
-        const allowed = {
-          runs: "INTEGER",
-          batting_average: "REAL",
-          strike_rate: "REAL",
-          wickets: "INTEGER",
-          economy: "REAL",
-          bowling_average: "REAL"
-        };
-
         const updates = [];
 
-        for (const [field, type] of Object.entries(allowed)) {
+        for (const [field, type] of Object.entries(STAT_FIELDS)) {
           if (body[field] === undefined) continue;
 
           const value = body[field];
@@ -185,6 +221,25 @@ export default {
           updates.push({ field, value });
         }
 
+        for (const field of Object.keys(TEXT_FIELDS)) {
+          if (body[field] === undefined) continue;
+
+          if (
+            typeof body[field] !== "string" ||
+            body[field].length > 50
+          ) {
+            return Response.json(
+              { error: `Invalid value for ${field}` },
+              { status: 400 }
+            );
+          }
+
+          updates.push({
+            field,
+            value: body[field]
+          });
+        }
+
         if (updates.length === 0) {
           return Response.json(
             { error: "No statistics provided" },
@@ -192,18 +247,31 @@ export default {
           );
         }
 
-        const assignments = updates.map(item => `${item.field} = ?`).join(", ");
+        const assignments = updates
+          .map(item => `${item.field} = ?`)
+          .join(", ");
+
         const values = updates.map(item => item.value);
 
         const result = await env.DB.prepare(
           `UPDATE players SET ${assignments} WHERE id = ?`
-        ).bind(...values, id).run();
+        )
+          .bind(...values, id)
+          .run();
 
         if (result.meta.changes === 0) {
-          return Response.json(
-            { error: "Player not found or no values changed" },
-            { status: 404 }
-          );
+          const player = await env.DB.prepare(
+            "SELECT id FROM players WHERE id = ?"
+          )
+            .bind(id)
+            .first();
+
+          if (!player) {
+            return Response.json(
+              { error: "Player not found" },
+              { status: 404 }
+            );
+          }
         }
 
         return Response.json({ success: true });
