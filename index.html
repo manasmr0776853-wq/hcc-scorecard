@@ -563,10 +563,102 @@ async function showAdminEditor(){
 
   await loadAdminFormat();
 }
+const RECORD_FIELDS = [
+  ["highest_individual_score", "Highest Individual Score"],
+  ["highest_team_total", "Highest Team Total"],
+  ["hat_tricks", "Hat-tricks"],
+  ["biggest_chase", "Biggest Successful Chase"],
+  ["best_defense", "Best Defense of a Target"],
+  ["most_centuries", "Most Centuries"],
+  ["most_half_centuries", "Most Half-Centuries"],
+  ["most_wickets_in_match", "Most Wickets in One Match"]
+];
 
+async function loadRecords() {
+  const format = document.getElementById("records-format").value;
+  const box = document.getElementById("records-list");
+  box.textContent = "Loading records...";
+
+  try {
+    const response = await fetch(
+      "/api/records?format=" + encodeURIComponent(format)
+    );
+    if (!response.ok) throw new Error();
+
+    const records = await response.json();
+    box.replaceChildren();
+
+    for (const [type, label] of RECORD_FIELDS) {
+      const record = records.find(r => r.record_type === type);
+      const card = document.createElement("div");
+      const heading = document.createElement("h3");
+      heading.textContent = label;
+
+      const details = document.createElement("p");
+      details.textContent = record && record.record_value
+        ? record.record_value
+        : "Not added yet";
+
+      card.append(heading, details);
+
+      if (record && record.player_name) {
+        const player = document.createElement("p");
+        player.textContent = "Player: " + record.player_name;
+        card.append(player);
+      }
+
+      if (record && record.team_name) {
+        const team = document.createElement("p");
+        team.textContent = "Team: " + record.team_name;
+        card.append(team);
+      }
+
+      box.append(card);
+    }
+  } catch {
+    box.textContent = "Could not load records. Please try again.";
+  }
+}
+
+async function loadTeams() {
+  const format = document.getElementById("teams-format").value;
+  const box = document.getElementById("teams-list");
+  box.textContent = "Loading team statistics...";
+
+  try {
+    const response = await fetch(
+      "/api/teams?format=" + encodeURIComponent(format)
+    );
+    if (!response.ok) throw new Error();
+
+    const teams = await response.json();
+    box.replaceChildren();
+
+    for (const name of ["Team M", "Team A", "Team Y", "Team I"]) {
+      const team = teams.find(t => t.team_name === name);
+      const card = document.createElement("div");
+      const heading = document.createElement("h3");
+      heading.textContent = name;
+
+      const stats = document.createElement("p");
+      stats.textContent = team
+        ? "Matches won: " + team.matches_won +
+          " | Series won: " + team.series_won +
+          " | Finals won: " + team.finals_won
+        : "No statistics found";
+
+      card.append(heading, stats);
+      box.append(card);
+    }
+  } catch {
+    box.textContent = "Could not load team statistics. Please try again.";
+  }
+}
 document.getElementById("open-admin").addEventListener("click",openAdmin);
 
 loadPlayers();
+  loadRecords();
+loadTeams();
 </script>
 
 </body>
