@@ -1,5 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HCC Scorecard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+body{background:#f4f6f8;color:#111827}
+header{background:#111827;color:white;padding:25px 15px;text-align:center}
+header h1{font-size:30px}
+header p{margin-top:6px;color:#cbd5e1}
+.container{max-width:900px;margin:auto;padding:20px}
+.section{background:white;border-radius:14px;padding:20px;margin-bottom:20px;box-shadow:0 3px 12px #00000014}
+.section h2{margin-bottom:15px}
+.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.player{background:#eef2ff;border-radius:12px;padding:18px;text-align:center;font-size:18px;font-weight:bold}
+.ranking{display:flex;justify-content:space-between;gap:10px;padding:14px;margin:8px 0;background:#f8fafc;border-radius:10px}
+.admin-button{display:block;width:100%;padding:15px;border:0;border-radius:10px;background:#111827;color:white;font-size:17px;font-weight:bold}
+footer{text-align:center;padding:25px;color:#64748b}
+</style>
+</head>
+<body>
+<header>
+<h1>🏏 HCC Scorecard</h1>
+<p>Cricket Statistics & Rankings</p>
+</header>
+
+<div class="container">
+<section class="section">
+<h2>👥 Players</h2>
+<div class="players" id="players">
+<div class="player">Manas Raj</div>
+<div class="player">Yash Raj</div>
+<div class="player">Ishani Raj</div>
+<div class="player">Altamash</div>
+<div class="player">Samar</div>
+<div class="player">Shivam</div>
+<div class="player">Himanshu</div>
+<div class="player">Devraj</div>
+<div class="player">Abhishek</div>
+<div class="player">Kanishk</div>
+</div>
+</section>
+
+<section class="section">
+<h2>🏆 Best Batsmen</h2>
+<div id="batsmen"><p>Loading statistics...</p></div>
+</section>
+
+<section class="section">
+<h2>🎯 Best Bowlers</h2>
+<div id="bowlers"><p>Loading statistics...</p></div>
+</section>
+
+<section class="section">
+<h2>💪 Best All-Rounders</h2>
+<div id="allrounders"><p>Loading statistics...</p></div>
+</section>
+
+<section class="section">
+<h2>🔐 Admin</h2>
+<button class="admin-button" onclick="openAdmin()">Open Admin Panel</button>
+</section>
+</div>
+
+<footer>HCC Scorecard 🏏</footer>
+
 <script>
 let adminLoggedIn = false;
+
+async function loadPlayers() {
+  try {
+    const response = await fetch("/api/players", {cache:"no-store"});
+    if (!response.ok) throw new Error();
+    const players = await response.json();
+
+    const playerBox = document.getElementById("players");
+    playerBox.replaceChildren();
+
+    players.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "player";
+      card.textContent = p.name;
+      playerBox.appendChild(card);
+    });
+
+    function ranking(boxId, key, label) {
+      const box = document.getElementById(boxId);
+      box.replaceChildren();
+      const sorted = [...players].sort((a,b) => (Number(b[key])||0)-(Number(a[key])||0));
+      sorted.slice(0,3).forEach((p,i) => {
+        const row = document.createElement("div");
+        row.className = "ranking";
+        const name = document.createElement("span");
+        name.textContent = ["🥇","🥈","🥉"][i] + " " + p.name;
+        const value = document.createElement("span");
+        value.textContent = label + ": " + (p[key] ?? 0);
+        row.append(name,value);
+        box.appendChild(row);
+      });
+    }
+
+    ranking("batsmen","runs","Runs");
+    ranking("bowlers","wickets","Wickets");
+
+    const box = document.getElementById("allrounders");
+    box.replaceChildren();
+    [...players]
+      .sort((a,b) => ((Number(b.runs)||0)+(Number(b.wickets)||0))-((Number(a.runs)||0)+(Number(a.wickets)||0)))
+      .slice(0,3)
+      .forEach((p,i) => {
+        const row = document.createElement("div");
+        row.className = "ranking";
+        row.textContent = ["🥇","🥈","🥉"][i] + " " + p.name + " — " + (Number(p.runs||0)+Number(p.wickets||0)) + " points";
+        box.appendChild(row);
+      });
+  } catch {
+    document.getElementById("players").textContent = "Could not load players.";
+  }
+}
 
 async function openAdmin() {
   const password = prompt("Enter Admin Password:");
@@ -7,21 +126,18 @@ async function openAdmin() {
 
   try {
     const response = await fetch("/api/login", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password })
+      method:"POST",
+      credentials:"same-origin",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({password})
     });
-
     const data = await response.json();
-
     if (!response.ok || !data.success) {
       alert("Login failed. Check your password.");
       return;
     }
-
     adminLoggedIn = true;
-    showAdminEditor();
+    await showAdminEditor();
   } catch {
     alert("Login failed. Please try again.");
   }
@@ -29,146 +145,108 @@ async function openAdmin() {
 
 async function showAdminEditor() {
   let players;
-
   try {
-    const response = await fetch("/api/players", {
-      credentials: "same-origin",
-      cache: "no-store"
-    });
-
+    const response = await fetch("/api/players", {cache:"no-store"});
     if (!response.ok) throw new Error();
-
     players = await response.json();
   } catch {
     alert("Could not load players.");
     return;
   }
 
-  const old = document.getElementById("admin-editor");
-  if (old) old.remove();
+  document.getElementById("admin-editor")?.remove();
 
   const panel = document.createElement("div");
   panel.id = "admin-editor";
-  panel.style.cssText =
-    "position:fixed;inset:0;background:#f4f6f8;z-index:9999;" +
-    "overflow:auto;padding:20px;font-family:Arial,sans-serif";
-
+  panel.style.cssText = "position:fixed;inset:0;background:#f4f6f8;z-index:9999;overflow:auto;padding:20px";
   panel.innerHTML = `
     <div style="max-width:500px;margin:auto;background:white;padding:20px;border-radius:14px">
       <h2>🏏 Admin Panel</h2>
       <p style="margin:12px 0">Select a player and update their statistics.</p>
-
       <label for="admin-player">Player</label>
       <select id="admin-player" style="width:100%;padding:12px;margin:8px 0 16px"></select>
-
       <div id="admin-fields"></div>
-
-      <button id="save-stats" style="width:100%;padding:14px;background:#111827;color:white;border:0;border-radius:8px;margin-top:15px">
-        Save Statistics
-      </button>
-
-      <button id="close-admin" style="width:100%;padding:14px;margin-top:10px">
-        Close Admin Panel
-      </button>
-
+      <button id="save-stats" style="width:100%;padding:14px;background:#111827;color:white;border:0;border-radius:8px;margin-top:15px">Save Statistics</button>
+      <button id="close-admin" style="width:100%;padding:14px;margin-top:10px">Close Admin Panel</button>
       <p id="admin-message" role="status" style="margin-top:12px"></p>
-    </div>
-  `;
+    </div>`;
 
   document.body.appendChild(panel);
-
   const select = panel.querySelector("#admin-player");
   const fields = panel.querySelector("#admin-fields");
 
-  for (const player of players) {
+  players.forEach(p => {
     const option = document.createElement("option");
-    option.value = player.id;
-    option.textContent = player.name;
+    option.value = p.id;
+    option.textContent = p.name;
     select.appendChild(option);
-  }
+  });
 
   const stats = [
-    ["runs", "Runs"],
-    ["batting_average", "Batting Average"],
-    ["strike_rate", "Strike Rate"],
-    ["wickets", "Wickets"],
-    ["economy", "Economy"],
-    ["bowling_average", "Bowling Average"]
+    ["runs","Runs"],["batting_average","Batting Average"],
+    ["strike_rate","Strike Rate"],["wickets","Wickets"],
+    ["economy","Economy"],["bowling_average","Bowling Average"]
   ];
 
   function renderFields() {
     const player = players.find(p => p.id === Number(select.value));
-
     fields.replaceChildren();
 
-    for (const [key, label] of stats) {
+    stats.forEach(([key,label]) => {
       const wrapper = document.createElement("div");
       wrapper.style.marginBottom = "12px";
-
       const caption = document.createElement("label");
       caption.textContent = label;
       caption.htmlFor = "stat-" + key;
-
       const input = document.createElement("input");
       input.id = "stat-" + key;
       input.type = "number";
       input.min = "0";
-      input.step = ["runs", "wickets"].includes(key) ? "1" : "any";
+      input.step = ["runs","wickets"].includes(key) ? "1" : "any";
       input.value = player[key] ?? 0;
       input.style.cssText = "width:100%;padding:11px;margin-top:5px";
-
-      wrapper.append(caption, input);
+      wrapper.append(caption,input);
       fields.appendChild(wrapper);
-    }
+    });
   }
 
-  select.addEventListener("change", renderFields);
+  select.addEventListener("change",renderFields);
   renderFields();
 
-  panel.querySelector("#save-stats").addEventListener("click", async () => {
+  panel.querySelector("#save-stats").addEventListener("click",async () => {
     if (!adminLoggedIn) return;
-
     const button = panel.querySelector("#save-stats");
     const message = panel.querySelector("#admin-message");
     button.disabled = true;
     message.textContent = "Saving...";
 
-    const payload = { id: Number(select.value) };
-
+    const payload = {id:Number(select.value)};
     for (const [key] of stats) {
       const input = panel.querySelector("#stat-" + key);
       const value = input.valueAsNumber;
-
-      if (
-        input.value.trim() === "" ||
-        !Number.isFinite(value) ||
-        value < 0 ||
-        (["runs", "wickets"].includes(key) && !Number.isInteger(value))
-      ) {
+      if (input.value.trim()==="" || !Number.isFinite(value) || value<0 ||
+          (["runs","wickets"].includes(key) && !Number.isInteger(value))) {
         message.textContent = "Please enter valid statistics.";
         button.disabled = false;
         return;
       }
-
       payload[key] = value;
     }
 
     try {
       const response = await fetch("/api/players", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        method:"POST",
+        credentials:"same-origin",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(payload)
       });
-
       const result = await response.json();
-
       if (!response.ok || !result.success) {
         message.textContent = result.error || "Could not save statistics.";
         return;
       }
-
       message.textContent = "Statistics saved successfully!";
+      await loadPlayers();
       await showAdminEditor();
     } catch {
       message.textContent = "Network error. Please try again.";
@@ -177,16 +255,17 @@ async function showAdminEditor() {
     }
   });
 
-  panel.querySelector("#close-admin").addEventListener("click", async () => {
+  panel.querySelector("#close-admin").addEventListener("click",async () => {
     try {
-      await fetch("/api/logout", {
-        method: "POST",
-        credentials: "same-origin"
-      });
+      await fetch("/api/logout",{method:"POST",credentials:"same-origin"});
     } finally {
       adminLoggedIn = false;
       panel.remove();
     }
   });
 }
-  </script>
+
+loadPlayers();
+</script>
+</body>
+  </html>
